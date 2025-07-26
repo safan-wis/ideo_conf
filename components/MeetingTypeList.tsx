@@ -1,6 +1,6 @@
-/* eslint-disable camelcase */
 'use client';
 
+/* eslint-disable camelcase */
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -70,33 +70,73 @@ const MeetingTypeList = () => {
   const meetingLink = `${process.env.NEXT_PUBLIC_BASE_URL}/meeting/${callDetail?.id}`;
 
   return (
-    <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+    <section className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
       <HomeCard
         img="/icons/add-meeting.svg"
-        title="New Meeting"
-        description="Start an instant meeting"
+        title="Start Instant Meeting"
+        description="Launch a professional HD video conference instantly with advanced collaboration tools and secure encryption."
         handleClick={() => setMeetingState('isInstantMeeting')}
+        features={[
+          "HD Video & Audio",
+          "Screen Sharing",
+          "Live Captions",
+          "Recording"
+        ]}
+        stats={[
+          { label: 'Avg. Duration', value: '45m' },
+          { label: 'Quality', value: 'HD' }
+        ]}
       />
       <HomeCard
         img="/icons/join-meeting.svg"
         title="Join Meeting"
-        description="via invitation link"
-        className="bg-blue-1"
+        description="Connect to an existing meeting seamlessly with a secure invitation link. No downloads required."
+        className="bg-gradient-to-br from-blue-500/10 to-blue-600/5"
         handleClick={() => setMeetingState('isJoiningMeeting')}
+        features={[
+          "One-Click Join",
+          "Guest Access",
+          "Meeting Preview",
+          "Chat Support"
+        ]}
+        stats={[
+          { label: 'Active Now', value: '1.2k' },
+          { label: 'Success', value: '99%' }
+        ]}
       />
       <HomeCard
         img="/icons/schedule.svg"
         title="Schedule Meeting"
-        description="Plan your meeting"
-        className="bg-purple-1"
+        description="Plan and organize your meetings with smart scheduling, calendar integration, and automated reminders."
+        className="bg-gradient-to-br from-purple-500/10 to-purple-600/5"
         handleClick={() => setMeetingState('isScheduleMeeting')}
+        features={[
+          "Calendar Sync",
+          "Reminders",
+          "Recurring",
+          "Time Zones"
+        ]}
+        stats={[
+          { label: 'Scheduled', value: '89' },
+          { label: 'Today', value: '12' }
+        ]}
       />
       <HomeCard
         img="/icons/recordings.svg"
-        title="View Recordings"
-        description="Meeting Recordings"
-        className="bg-yellow-1"
+        title="Meeting Library"
+        description="Access your secure cloud recordings, transcripts, and meeting analytics in one organized space."
+        className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/5"
         handleClick={() => router.push('/recordings')}
+        features={[
+          "Cloud Storage",
+          "Transcripts",
+          "Analytics",
+          "Sharing"
+        ]}
+        stats={[
+          { label: 'Stored', value: '156' },
+          { label: 'Hours', value: '380' }
+        ]}
       />
 
       {!callDetail ? (
