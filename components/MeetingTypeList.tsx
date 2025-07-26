@@ -3,7 +3,6 @@
 /* eslint-disable camelcase */
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-
 import HomeCard from './HomeCard';
 import MeetingModal from './MeetingModal';
 import { Call, useStreamVideoClient } from '@stream-io/video-react-sdk';
@@ -11,6 +10,7 @@ import { useUser } from '@clerk/nextjs';
 import Loader from './Loader';
 import { Textarea } from './ui/textarea';
 import ReactDatePicker from 'react-datepicker';
+import "react-datepicker/dist/react-datepicker.css";
 import { useToast } from './ui/use-toast';
 import { Input } from './ui/input';
 
@@ -27,47 +27,104 @@ const MeetingTypeList = () => {
   >(undefined);
   const [values, setValues] = useState(initialValues);
   const [callDetail, setCallDetail] = useState<Call>();
+  const [isCreating, setIsCreating] = useState(false);
   const client = useStreamVideoClient();
   const { user } = useUser();
   const { toast } = useToast();
 
   const createMeeting = async () => {
-    if (!client || !user) return;
+    if (!client || !user) {
+      toast({ 
+        title: 'Error',
+        description: 'Please sign in to create a meeting',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     try {
-      if (!values.dateTime) {
-        toast({ title: 'Please select a date and time' });
-        return;
-      }
+      setIsCreating(true);
       const id = crypto.randomUUID();
       const call = client.call('default', id);
-      if (!call) throw new Error('Failed to create meeting');
-      const startsAt =
-        values.dateTime.toISOString() || new Date(Date.now()).toISOString();
+      
+      if (!call) {
+        throw new Error('Failed to create meeting');
+      }
+
+      const startsAt = values.dateTime.toISOString();
       const description = values.description || 'Instant Meeting';
+
+      // Create member object with required fields
+      const member = {
+        user_id: user.id,
+        role: 'host',
+      };
+
       await call.getOrCreate({
         data: {
           starts_at: startsAt,
+          created_by_user_id: user.id,
+          members: [member], // Pass member object instead of just the ID
           custom: {
             description,
+            host: user.fullName || user.username,
           },
         },
       });
+
       setCallDetail(call);
-      if (!values.description) {
+      
+      if (meetingState === 'isInstantMeeting') {
         router.push(`/meeting/${call.id}`);
       }
+
       toast({
-        title: 'Meeting Created',
+        title: 'Success',
+        description: meetingState === 'isInstantMeeting' 
+          ? 'Meeting created! Redirecting...'
+          : 'Meeting scheduled successfully',
       });
     } catch (error) {
-      console.error(error);
-      toast({ title: 'Failed to create Meeting' });
+      console.error('Error creating meeting:', error);
+      toast({ 
+        title: 'Error',
+        description: 'Failed to create meeting. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleJoinMeeting = () => {
+    if (!values.link) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a meeting link',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      // Extract meeting ID from link
+      const meetingId = values.link.split('/').pop();
+      if (!meetingId) {
+        throw new Error('Invalid meeting link');
+      }
+      router.push(`/meeting/${meetingId}`);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Invalid meeting link. Please check and try again.',
+        variant: 'destructive'
+      });
     }
   };
 
   if (!client || !user) return <Loader />;
 
-  const meetingLink = `${process.env.NEXT_PUBLIC_BASE_URL}/meeting/${callDetail?.id}`;
+  const meetingLink = callDetail ? `${process.env.NEXT_PUBLIC_BASE_URL}/meeting/${callDetail.id}` : '';
 
   return (
     <section className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
@@ -83,32 +140,33 @@ const MeetingTypeList = () => {
           "Recording"
         ]}
         stats={[
-          { label: 'Avg. Duration', value: '45m' },
-          { label: 'Quality', value: 'HD' }
+          { label: 'Quality', value: 'HD' },
+          { label: 'Latency', value: '50ms' }
         ]}
+        badge="Recommended"
       />
       <HomeCard
         img="/icons/join-meeting.svg"
         title="Join Meeting"
-        description="Connect to an existing meeting seamlessly with a secure invitation link. No downloads required."
-        className="bg-gradient-to-br from-blue-500/10 to-blue-600/5"
+        description="Connect to an existing meeting seamlessly with one click. No downloads required, just pure browser-based HD quality."
+        className="bg-gradient-to-br from-blue-600/5 to-blue-700/5"
         handleClick={() => setMeetingState('isJoiningMeeting')}
         features={[
-          "One-Click Join",
+          "Quick Join",
           "Guest Access",
           "Meeting Preview",
           "Chat Support"
         ]}
         stats={[
-          { label: 'Active Now', value: '1.2k' },
+          { label: 'Active', value: '1.2k' },
           { label: 'Success', value: '99%' }
         ]}
       />
       <HomeCard
         img="/icons/schedule.svg"
         title="Schedule Meeting"
-        description="Plan and organize your meetings with smart scheduling, calendar integration, and automated reminders."
-        className="bg-gradient-to-br from-purple-500/10 to-purple-600/5"
+        description="Plan ahead with smart scheduling, calendar integration, automated reminders, and recurring meeting support."
+        className="bg-gradient-to-br from-purple-600/5 to-purple-700/5"
         handleClick={() => setMeetingState('isScheduleMeeting')}
         features={[
           "Calendar Sync",
@@ -117,15 +175,16 @@ const MeetingTypeList = () => {
           "Time Zones"
         ]}
         stats={[
-          { label: 'Scheduled', value: '89' },
-          { label: 'Today', value: '12' }
+          { label: 'Today', value: '89' },
+          { label: 'Week', value: '412' }
         ]}
+        badge="Pro"
       />
       <HomeCard
         img="/icons/recordings.svg"
         title="Meeting Library"
-        description="Access your secure cloud recordings, transcripts, and meeting analytics in one organized space."
-        className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/5"
+        description="Access your secure cloud recordings with automatic transcription, analytics, and easy sharing options."
+        className="bg-gradient-to-br from-amber-600/5 to-amber-700/5"
         handleClick={() => router.push('/recordings')}
         features={[
           "Cloud Storage",
@@ -143,73 +202,94 @@ const MeetingTypeList = () => {
         <MeetingModal
           isOpen={meetingState === 'isScheduleMeeting'}
           onClose={() => setMeetingState(undefined)}
-          title="Create Meeting"
+          title="Schedule a Meeting"
+          description="Plan your next meeting with team members"
           handleClick={createMeeting}
         >
-          <div className="flex flex-col gap-2.5">
-            <label className="text-base font-normal leading-[22.4px] text-sky-2">
-              Add a description
-            </label>
-            <Textarea
-              className="border-none bg-dark-3 focus-visible:ring-0 focus-visible:ring-offset-0"
-              onChange={(e) =>
-                setValues({ ...values, description: e.target.value })
-              }
-            />
-          </div>
-          <div className="flex w-full flex-col gap-2.5">
-            <label className="text-base font-normal leading-[22.4px] text-sky-2">
-              Select Date and Time
-            </label>
-            <ReactDatePicker
-              selected={values.dateTime}
-              onChange={(date) => setValues({ ...values, dateTime: date! })}
-              showTimeSelect
-              timeFormat="HH:mm"
-              timeIntervals={15}
-              timeCaption="time"
-              dateFormat="MMMM d, yyyy h:mm aa"
-              className="w-full rounded bg-dark-3 p-2 focus:outline-none"
-            />
+          <div className="flex flex-col gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-200">
+                Meeting Description
+              </label>
+              <Textarea
+                placeholder="Enter meeting description..."
+                className="min-h-[100px] bg-gray-800/50 border-gray-700 focus:border-blue-500 focus:ring-blue-500"
+                value={values.description}
+                onChange={(e) => setValues({ ...values, description: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-200">
+                Date and Time
+              </label>
+              <ReactDatePicker
+                selected={values.dateTime}
+                onChange={(date) => setValues({ ...values, dateTime: date! })}
+                showTimeSelect
+                timeFormat="HH:mm"
+                timeIntervals={15}
+                timeCaption="Time"
+                dateFormat="MMMM d, yyyy h:mm aa"
+                className="w-full rounded-lg bg-gray-800/50 border border-gray-700 p-2.5 text-white focus:border-blue-500 focus:ring-blue-500"
+                minDate={new Date()}
+              />
+            </div>
           </div>
         </MeetingModal>
       ) : (
         <MeetingModal
           isOpen={meetingState === 'isScheduleMeeting'}
-          onClose={() => setMeetingState(undefined)}
-          title="Meeting Created"
+          onClose={() => {
+            setMeetingState(undefined);
+            setCallDetail(undefined);
+            setValues(initialValues);
+          }}
+          title="Meeting Scheduled!"
+          description="Your meeting has been scheduled successfully"
           handleClick={() => {
             navigator.clipboard.writeText(meetingLink);
-            toast({ title: 'Link Copied' });
+            toast({ 
+              title: 'Success',
+              description: 'Meeting link copied to clipboard'
+            });
           }}
-          image={'/icons/checked.svg'}
+          image="/icons/checked.svg"
           buttonIcon="/icons/copy.svg"
-          className="text-center"
           buttonText="Copy Meeting Link"
         />
       )}
 
       <MeetingModal
         isOpen={meetingState === 'isJoiningMeeting'}
-        onClose={() => setMeetingState(undefined)}
-        title="Type the link here"
-        className="text-center"
+        onClose={() => {
+          setMeetingState(undefined);
+          setValues(initialValues);
+        }}
+        title="Join Meeting"
+        description="Enter the meeting link to join"
         buttonText="Join Meeting"
-        handleClick={() => router.push(values.link)}
+        handleClick={handleJoinMeeting}
       >
-        <Input
-          placeholder="Meeting link"
-          onChange={(e) => setValues({ ...values, link: e.target.value })}
-          className="border-none bg-dark-3 focus-visible:ring-0 focus-visible:ring-offset-0"
-        />
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-200">
+            Meeting Link
+          </label>
+          <Input
+            placeholder="Paste meeting link here..."
+            value={values.link}
+            onChange={(e) => setValues({ ...values, link: e.target.value })}
+            className="bg-gray-800/50 border-gray-700 focus:border-blue-500 focus:ring-blue-500"
+          />
+        </div>
       </MeetingModal>
 
       <MeetingModal
         isOpen={meetingState === 'isInstantMeeting'}
         onClose={() => setMeetingState(undefined)}
-        title="Start an Instant Meeting"
-        className="text-center"
-        buttonText="Start Meeting"
+        title="Start Instant Meeting"
+        description="Create a new meeting and join immediately"
+        buttonText={isCreating ? 'Creating Meeting...' : 'Start Meeting'}
         handleClick={createMeeting}
       />
     </section>

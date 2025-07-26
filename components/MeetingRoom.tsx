@@ -32,71 +32,119 @@ const MeetingRoom = () => {
   const [layout, setLayout] = useState<CallLayoutType>('speaker-left');
   const [showParticipants, setShowParticipants] = useState(false);
   const { useCallCallingState } = useCallStateHooks();
-
-  // for more detail about types of CallingState see: https://getstream.io/video/docs/react/ui-cookbook/ringing-call/#incoming-call-panel
   const callingState = useCallCallingState();
 
-  if (callingState !== CallingState.JOINED) return <Loader />;
+  if (callingState !== CallingState.JOINED) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-900">
+        <Loader />
+      </div>
+    );
+  }
 
   const CallLayout = () => {
+    const layoutProps = {
+      participantsBarPosition: layout === 'speaker-right' ? 'left' : 'right',
+      aspectRatio: 16 / 9,
+      participantViewOptions: {
+        fit: 'contain',
+        cornerRadius: '12px',
+      },
+    };
+
     switch (layout) {
       case 'grid':
-        return <PaginatedGridLayout />;
+        return (
+          <div className="h-full w-full">
+            <PaginatedGridLayout
+              participantViewOptions={{
+                ...layoutProps.participantViewOptions,
+                aspectRatio: layoutProps.aspectRatio,
+              }}
+            />
+          </div>
+        );
       case 'speaker-right':
-        return <SpeakerLayout participantsBarPosition="left" />;
-      default:
-        return <SpeakerLayout participantsBarPosition="right" />;
+      case 'speaker-left':
+        return (
+          <div className="h-full w-full">
+            <SpeakerLayout
+              participantsBarPosition={layoutProps.participantsBarPosition}
+              participantViewOptions={{
+                ...layoutProps.participantViewOptions,
+                aspectRatio: layoutProps.aspectRatio,
+              }}
+            />
+          </div>
+        );
     }
   };
 
   return (
-    <section className="relative h-screen w-full overflow-hidden pt-4 text-white">
-      <div className="relative flex size-full items-center justify-center">
-        <div className=" flex size-full max-w-[1000px] items-center">
-          <CallLayout />
+    <div className="flex h-screen flex-col bg-gray-900">
+      {/* Main Content */}
+      <div className="relative flex flex-1 overflow-hidden">
+        {/* Video Layout */}
+        <div className="relative flex flex-1 items-center justify-center p-4">
+          <div className="relative h-full w-full max-w-[1440px]">
+            <CallLayout />
+          </div>
         </div>
+
+        {/* Participants List */}
         <div
-          className={cn('h-[calc(100vh-86px)] hidden ml-2', {
-            'show-block': showParticipants,
-          })}
+          className={cn(
+            'w-80 transform border-l border-gray-800 bg-gray-900 transition-transform duration-300',
+            showParticipants ? 'translate-x-0' : 'translate-x-full'
+          )}
         >
           <CallParticipantsList onClose={() => setShowParticipants(false)} />
         </div>
       </div>
-      {/* video layout and call controls */}
-      <div className="fixed bottom-0 flex w-full items-center justify-center gap-5">
-        <CallControls onLeave={() => router.push(`/`)} />
+
+      {/* Controls */}
+      <div className="flex items-center justify-center gap-4 bg-gray-900 p-4">
+        <CallControls 
+          onLeave={() => router.push('/')}
+          className="bg-transparent"
+        />
 
         <DropdownMenu>
-          <div className="flex items-center">
-            <DropdownMenuTrigger className="cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b]  ">
-              <LayoutList size={20} className="text-white" />
-            </DropdownMenuTrigger>
-          </div>
-          <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white">
-            {['Grid', 'Speaker-Left', 'Speaker-Right'].map((item, index) => (
-              <div key={index}>
-                <DropdownMenuItem
-                  onClick={() =>
-                    setLayout(item.toLowerCase() as CallLayoutType)
-                  }
-                >
-                  {item}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator className="border-dark-1" />
-              </div>
+          <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-white hover:bg-gray-700 transition-colors">
+            <LayoutList size={20} />
+            <span className="text-sm">Layout</span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="bg-gray-800 border-gray-700">
+            {['Grid', 'Speaker-Left', 'Speaker-Right'].map((item) => (
+              <DropdownMenuItem
+                key={item}
+                onClick={() => setLayout(item.toLowerCase() as CallLayoutType)}
+                className="text-white hover:bg-gray-700"
+              >
+                {item}
+              </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+
         <CallStatsButton />
-        <button onClick={() => setShowParticipants((prev) => !prev)}>
-          <div className=" cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b]  ">
-            <Users size={20} className="text-white" />
-          </div>
+
+        <button
+          onClick={() => setShowParticipants((prev) => !prev)}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-4 py-2 transition-colors",
+            showParticipants 
+              ? "bg-blue-600 text-white hover:bg-blue-700"
+              : "bg-gray-800 text-white hover:bg-gray-700"
+          )}
+        >
+          <Users size={20} />
+          <span className="text-sm">Participants</span>
         </button>
+
         {!isPersonalRoom && <EndCallButton />}
       </div>
-    </section>
+    </div>
   );
 };
 

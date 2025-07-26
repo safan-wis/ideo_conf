@@ -1,10 +1,11 @@
 "use client";
 import { ReactNode } from "react";
-import { Dialog, DialogContent } from "./ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "./ui/dialog";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import Image from "next/image";
 import { motion, AnimatePresence } from 'framer-motion';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
 interface MeetingModalProps {
   isOpen: boolean;
@@ -38,6 +39,11 @@ const MeetingModal = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] border-none bg-transparent p-0">
+        <DialogTitle className="sr-only">{title}</DialogTitle>
+        {description && (
+          <DialogDescription className="sr-only">{description}</DialogDescription>
+        )}
+        
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
