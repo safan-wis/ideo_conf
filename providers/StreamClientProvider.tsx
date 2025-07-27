@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode, useEffect, useState } from 'react';
-import { StreamVideoClient, StreamVideo } from '@stream-io/video-react-sdk';
+import { StreamVideoClient, StreamVideo, StreamTheme } from '@stream-io/video-react-sdk';
 import { useUser } from '@clerk/nextjs';
 
 import { tokenProvider } from '@/actions/stream.actions';
@@ -21,18 +21,28 @@ const StreamVideoProvider = ({ children }: { children: ReactNode }) => {
       apiKey: API_KEY,
       user: {
         id: user?.id,
-        name: user?.username || user?.id,
+        name: user?.firstName || user?.username || user?.id,
         image: user?.imageUrl,
       },
       tokenProvider,
     });
 
     setVideoClient(client);
+
+    // Cleanup function
+    return () => {
+      client.disconnectUser();
+      setVideoClient(undefined);
+    };
   }, [user, isLoaded]);
 
   if (!videoClient) return <Loader />;
 
-  return <StreamVideo client={videoClient}>{children}</StreamVideo>;
+  return (
+    <StreamVideo client={videoClient}>
+      <StreamTheme>{children}</StreamTheme>
+    </StreamVideo>
+  );
 };
 
 export default StreamVideoProvider;

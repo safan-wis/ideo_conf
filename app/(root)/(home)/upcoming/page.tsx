@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { useGetCalls } from '@/hooks/useGetCalls';
+import { useUser } from '@clerk/nextjs';
 import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -17,15 +18,8 @@ const LoadingSpinner = () => (
 );
 
 const UpcomingMeetings = () => {
-  const { allCalls, loading, error } = useGetCalls();
-  
-  // Get all upcoming meetings and sort by date
-  const upcomingMeetings = allCalls
-    .filter(call => call.type === 'scheduled')
-    .sort((a, b) => {
-      if (!a.starts_at || !b.starts_at) return 0;
-      return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
-    });
+  const { upcomingCalls, isLoading } = useGetCalls();
+  const { user } = useUser();
 
   return (
     <motion.div
@@ -52,15 +46,11 @@ const UpcomingMeetings = () => {
 
       {/* Meetings List */}
       <div className="space-y-4">
-        {loading ? (
+        {isLoading ? (
           <div className="flex justify-center py-8">
             <LoadingSpinner />
           </div>
-        ) : error ? (
-          <div className="text-center text-red-400 py-8">
-            {error}
-          </div>
-        ) : upcomingMeetings.length === 0 ? (
+        ) : upcomingCalls.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12">
             <div className="bg-gray-800/50 rounded-full p-4 mb-4">
               <Image
@@ -83,7 +73,7 @@ const UpcomingMeetings = () => {
             </Link>
           </div>
         ) : (
-          upcomingMeetings.map((meeting, index) => (
+          upcomingCalls.map((meeting, index) => (
             <motion.div
               key={meeting.id}
               initial={{ opacity: 0, y: 20 }}
@@ -95,7 +85,7 @@ const UpcomingMeetings = () => {
                 <div className="space-y-4">
                   <div>
                     <h3 className="text-xl font-semibold text-white mb-2">
-                      {meeting.custom?.description || 'Scheduled Meeting'}
+                      {meeting.state.custom?.description || 'Scheduled Meeting'}
                     </h3>
                     <div className="flex flex-wrap gap-4">
                       <div className="flex items-center gap-2 text-gray-400">
@@ -104,8 +94,8 @@ const UpcomingMeetings = () => {
                             d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
                           />
                         </svg>
-                        {meeting.starts_at && (
-                          <span>{format(new Date(meeting.starts_at), 'EEEE, MMMM d, yyyy')}</span>
+                        {meeting.state.startsAt && (
+                          <span>{format(new Date(meeting.state.startsAt), 'EEEE, MMMM d, yyyy')}</span>
                         )}
                       </div>
                       <div className="flex items-center gap-2 text-gray-400">
@@ -114,8 +104,8 @@ const UpcomingMeetings = () => {
                             d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
                           />
                         </svg>
-                        {meeting.starts_at && (
-                          <span>{format(new Date(meeting.starts_at), 'h:mm a')}</span>
+                        {meeting.state.startsAt && (
+                          <span>{format(new Date(meeting.state.startsAt), 'h:mm a')}</span>
                         )}
                       </div>
                     </div>
@@ -135,13 +125,11 @@ const UpcomingMeetings = () => {
                       ))}
                     </div>
                     <span className="text-sm text-gray-400">
-                      {meeting.participants || 0} Participants
+                      {meeting.state.members?.length || 0} Participants
                     </span>
-                    {meeting.custom?.host && (
-                      <span className="text-sm text-gray-400">
-                        • Hosted by {meeting.custom.host}
-                      </span>
-                    )}
+                    <span className="text-sm text-gray-400">
+                      • Hosted by {meeting.state.createdBy?.id === user?.id ? 'You' : 'Other'}
+                    </span>
                   </div>
                 </div>
 

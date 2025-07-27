@@ -23,14 +23,14 @@ const Home = () => {
   const now = new Date();
   const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   const date = (new Intl.DateTimeFormat('en-US', { dateStyle: 'full' })).format(now);
-  const { isLoaded: isUserLoaded, isSignedIn } = useUser();
+  const { isLoaded: isUserLoaded, isSignedIn, user } = useUser();
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  const { upcomingMeetings, recentRecordings, loading, error } = useGetCalls();
+  const { upcomingCalls, callRecordings, isLoading } = useGetCalls();
 
   // Show loading state while user authentication is being checked
   if (!isClient || !isUserLoaded) {
@@ -253,15 +253,11 @@ const Home = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {loading ? (
+              {isLoading ? (
                 <div className="col-span-full flex justify-center py-8">
                   <LoadingSpinner />
                 </div>
-              ) : error ? (
-                <div className="col-span-full text-center text-red-400 py-8">
-                  {error}
-                </div>
-              ) : upcomingMeetings?.length === 0 ? (
+              ) : upcomingCalls?.length === 0 ? (
                 <div className="col-span-full flex flex-col items-center justify-center py-12 px-4">
                   <div className="bg-gray-800/50 rounded-full p-4 mb-4">
                     <Image
@@ -276,15 +272,15 @@ const Home = () => {
                   <p className="text-gray-400 text-center mb-6">
                     You don't have any meetings scheduled. Would you like to schedule one now?
                   </p>
-                  <button
-                    onClick={() => setMeetingState('isScheduleMeeting')}
+                  <Link
+                    href="/"
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
                   >
                     Schedule a Meeting
-                  </button>
+                  </Link>
                 </div>
               ) : (
-                upcomingMeetings?.map((meeting, index) => (
+                upcomingCalls?.slice(0, 3).map((meeting, index) => (
                   <motion.div
                     key={meeting.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -295,31 +291,37 @@ const Home = () => {
                     <div className="flex items-start justify-between mb-4">
                       <div className="space-y-1">
                         <h5 className="font-medium text-white">
-                          {meeting.custom?.description || 'Scheduled Meeting'}
+                          {meeting.state.custom?.description || 'Scheduled Meeting'}
                         </h5>
-                        <div className="flex items-center gap-2 text-sm text-gray-400">
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
-                            />
-                          </svg>
-                          {meeting.starts_at && (
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2 text-sm text-gray-400">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
+                              />
+                            </svg>
                             <span>
-                              {format(new Date(meeting.starts_at), 'MMM d, yyyy')}
+                              {meeting.state.startsAt ? (
+                                format(new Date(meeting.state.startsAt), 'EEEE, MMMM d, yyyy')
+                              ) : (
+                                'Date not set'
+                              )}
                             </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-400">
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
-                            />
-                          </svg>
-                          {meeting.starts_at && (
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-400">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
+                              />
+                            </svg>
                             <span>
-                              {format(new Date(meeting.starts_at), 'h:mm a')}
+                              {meeting.state.startsAt ? (
+                                format(new Date(meeting.state.startsAt), 'h:mm a')
+                              ) : (
+                                'Time not set'
+                              )}
                             </span>
-                          )}
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -343,7 +345,10 @@ const Home = () => {
                         ))}
                       </div>
                       <span className="text-sm text-gray-400">
-                        {meeting.participants || 0} Participants
+                        {meeting.state.members?.length || 0} Participants
+                      </span>
+                      <span className="text-sm text-gray-400">
+                        • Hosted by {meeting.state.createdBy?.id === user?.id ? 'You' : 'Other'}
                       </span>
                     </div>
 
@@ -401,20 +406,16 @@ const Home = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {loading ? (
+              {isLoading ? (
                 <div className="col-span-full flex justify-center py-8">
                   <LoadingSpinner />
                 </div>
-              ) : error ? (
-                <div className="col-span-full text-center text-red-400 py-8">
-                  {error}
-                </div>
-              ) : recentRecordings?.length === 0 ? (
+              ) : callRecordings?.length === 0 ? (
                 <div className="col-span-full text-center text-gray-400 py-8">
                   No recordings available
                 </div>
               ) : (
-                recentRecordings?.map((recording, index) => (
+                callRecordings?.slice(0, 3).map((recording, index) => (
                   <motion.div
                     key={recording.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -425,10 +426,10 @@ const Home = () => {
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
                         <h5 className="font-medium text-white">
-                          {recording.custom?.description || 'Recorded Meeting'}
+                          {recording.state.custom?.description || 'Recorded Meeting'}
                         </h5>
                         <p className="text-sm text-gray-400">
-                          {recording.ended_at && formatDistanceToNow(new Date(recording.ended_at), { addSuffix: true })}
+                          {recording.state.endedAt && formatDistanceToNow(new Date(recording.state.endedAt), { addSuffix: true })}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -439,9 +440,9 @@ const Home = () => {
                     </div>
 
                     <div className="mt-4 flex items-center gap-3">
-                      {recording.recording_url && (
+                      {recording.state.recording?.url && (
                         <a 
-                          href={recording.recording_url}
+                          href={recording.state.recording.url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
